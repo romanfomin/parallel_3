@@ -88,14 +88,10 @@ double min_not_null(double *arr, int len)
 {
 	int i;
 	double min_val = DBL_MAX;
-	#pragma omp parallel for default(none) private(i) shared(arr, len, min_val)
 	for (i=0; i<len; i++)
 	{
-		#pragma omp critical
-		{
-			if (arr[i] < min_val && arr[i] > 0)
-				min_val = arr[i];
-		}
+		if (arr[i] < min_val && arr[i] > 0)
+			min_val = arr[i];
 	}
 	return min_val;
 }
@@ -105,11 +101,13 @@ double reduce(double *arr, int len)
 	int i;
 	double min_val = min_not_null(arr, len);
 	double x = 0;
-	#pragma omp parallel for default(none) private(i) shared(arr, len, min_val, x)
+	#pragma omp parallel for default(none) private(i) shared(arr, len, min_val) reduction(+:x)
 	for (i=0; i<len; i++)
 	{
-		if ((int)(arr[i] / min_val) % 2 == 0)
-			x += sin(arr[i]);
+		if ((int)(arr[i] / min_val) % 2 == 0) {
+			double sin_val = sin(arr[i]);
+			x += sin_val;
+		}
 	}
 	return x;
 }
@@ -123,7 +121,6 @@ int main(int argc, char* argv[])
 	long delta_ms;
 	N = atoi(argv[1]); /* N равен первому параметру командной строки */
 	gettimeofday(&T1, NULL); /* запомнить текущее время T1 */
-
 
 	for (i=0; i<50; i++) /* 50 экспериментов */
 	{
