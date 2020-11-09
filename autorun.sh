@@ -7,5 +7,5 @@ delta=$(((N2-N1)/10))
 
 for i in {1..10}
 do
-	./${binary} $((N1+$i*$delta))
+	./${binary} $K $((N1+$i*$delta))
 done

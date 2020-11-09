@@ -4,6 +4,17 @@
 #include <sys/time.h>
 #include <float.h>
 
+// #define SCHEDULER_TYPE static
+// #define SCHEDULER_TYPE dynamic
+#define SCHEDULER_TYPE guided
+// #define CHUNK_SIZE 1
+// #define CHUNK_SIZE 50
+// #define CHUNK_SIZE 100
+// #define CHUNK_SIZE 200
+// #define CHUNK_SIZE 400
+// #define CHUNK_SIZE 800
+#define CHUNK_SIZE 2000
+
 void print_arr(double *arr, int len)
 {
 	int i;
@@ -25,7 +36,7 @@ void fill_arr(double *arr, int len, unsigned int *seed, int left, int right)
 void apply_m1_func(double *arr, int len)
 {
 	int i;
-	#pragma omp parallel for default(none) private(i) shared(arr, len)
+	#pragma omp parallel for default(none) private(i) shared(arr, len) schedule(SCHEDULER_TYPE, CHUNK_SIZE)
 	for (i=0; i<len; i++)
 	{
 		arr[i] = 1 / tanh(sqrt(arr[i]));
@@ -36,7 +47,7 @@ void apply_m2_func(double *arr, int len, double *arr_copy)
 {
 	int i;
 	double prev;
-	#pragma omp parallel for default(none) private(i, prev) shared(arr, arr_copy, len)
+	#pragma omp parallel for default(none) private(i, prev) shared(arr, arr_copy, len) schedule(SCHEDULER_TYPE, CHUNK_SIZE)
 	for (i=0; i<len; i++)
 	{
 		prev = 0;
@@ -49,7 +60,7 @@ void apply_m2_func(double *arr, int len, double *arr_copy)
 void apply_merge_func(double *m1, double *m2, int m2_len)
 {
 	int i;
-	#pragma omp parallel for default(none) private(i) shared(m1, m2, m2_len)
+	#pragma omp parallel for default(none) private(i) shared(m1, m2, m2_len) schedule(SCHEDULER_TYPE, CHUNK_SIZE)
 	for (i=0; i<m2_len; i++)
 	{
 		m2[i] = pow(m1[i], m2[i]);
@@ -59,29 +70,43 @@ void apply_merge_func(double *m1, double *m2, int m2_len)
 void copy_arr(double *src, int len, double *dst)
 {
 	int i;
-	#pragma omp parallel for default(none) private(i) shared(src, dst, len)
+	#pragma omp parallel for default(none) private(i) shared(src, dst, len) schedule(SCHEDULER_TYPE, CHUNK_SIZE)
 	for (i=0; i<len; i++)
 		dst[i] = src[i];
 }
 
 void stupid_sort(double *arr, int len)
 {
-    int i, j, k;
+    int i = 0;
     double tmp;
 
-    for (k=0; k<len; k++) {
-	    for (j=0; j<len; j++) {
-	    	for (i=0; i<len; i++) {
-	    		if (arr[i+1] < arr[i])
-		        {
-		            tmp = arr[i];
-		            arr[i] = arr[i+1];
-		            arr[i+1] = tmp;
-		            break;
-		        }
-	    	}
-	    }
-	}
+    while (i < len - 1)
+    {
+        if (arr[i+1] < arr[i])
+        {
+            tmp = arr[i];
+            arr[i] = arr[i+1];
+            arr[i+1] = tmp;
+            i = 0;
+        }
+        else i++;
+    }
+
+	// int i, j, k;
+    // double tmp;
+ //    for (k=0; k<len; k++) {
+	//     for (j=0; j<len; j++) {
+	//     	for (i=0; i<len; i++) {
+	//     		if (arr[i+1] < arr[i])
+	// 	        {
+	// 	            tmp = arr[i];
+	// 	            arr[i] = arr[i+1];
+	// 	            arr[i+1] = tmp;
+	// 	            break;
+	// 	        }
+	//     	}
+	//     }
+	// }
 }
 
 double min_not_null(double *arr, int len)
@@ -101,7 +126,7 @@ double reduce(double *arr, int len)
 	int i;
 	double min_val = min_not_null(arr, len);
 	double x = 0;
-	#pragma omp parallel for default(none) private(i) shared(arr, len, min_val) reduction(+:x)
+	#pragma omp parallel for default(none) private(i) shared(arr, len, min_val) reduction(+:x) schedule(SCHEDULER_TYPE, CHUNK_SIZE)
 	for (i=0; i<len; i++)
 	{
 		if ((int)(arr[i] / min_val) % 2 == 0) {
